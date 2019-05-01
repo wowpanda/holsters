@@ -8,6 +8,7 @@
 -- DO NOT CHANGE ANY OF THESE VALUES! Go to config.lua for configuration.
 
 local default_weapon = GetHashKey(config.weapon) -- The weapon that the script looks for if one isn't specified for a holster, this is the glock.
+local enabled = true
 local active = false
 local ped = nil -- Cache the ped
 local currentPedData = nil -- Config data for the current ped
@@ -25,21 +26,23 @@ end
 -- This only needs to be run every 5 seconds or so, as ped changes are infrequent
 Citizen.CreateThread(function()
   while true do
-    ped = GetPlayerPed(-1)
-    local ped_hash = GetEntityModel(ped)
-    local enable = false -- We updated the 'enabled' variable in the upper scope with this at the end
-    -- Loop over peds in the config
-    for ped, data in pairs(config.peds) do
-      if GetHashKey(ped) == ped_hash then 
-        enable = true -- By default, the ped will have its holsters enabled
-        if data.enabled ~= nil then -- Optional 'enabled' option
-          enable = data.enabled
+    if enabled then
+      ped = GetPlayerPed(-1)
+      local ped_hash = GetEntityModel(ped)
+      local enable = false -- We updated the 'enabled' variable in the upper scope with this at the end
+      -- Loop over peds in the config
+      for ped, data in pairs(config.peds) do
+        if GetHashKey(ped) == ped_hash then 
+          enable = true -- By default, the ped will have its holsters enabled
+          if data.enabled ~= nil then -- Optional 'enabled' option
+            enable = data.enabled
+          end
+          currentPedData = data
+          break
         end
-        currentPedData = data
-        break
       end
+      active = enable
     end
-    active = enable
     Citizen.Wait(5000)
   end
 end)
@@ -73,4 +76,17 @@ Citizen.CreateThread(function()
     end
     Citizen.Wait(200)
   end
+end)
+
+RegisterCommand('holsters', function(source, args)
+  local bool = not enabled -- Opposite of current state
+  if args[1] then
+    if args[1] == 'enable' then
+      bool = true
+    else if args[1] == 'disable' then
+      bool = false
+    end
+  end
+  enabled = bool -- Update enabled with new state
+  -- TODO Add chat message
 end)
